@@ -1,478 +1,312 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashGen - AI Flashcard Generator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: system-ui, sans-serif;
-        }
-
-        body {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-
-        .auth-box {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-
-        button {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-            button:hover {
-                background: #0056b3;
-            }
-
-            button.secondary {
-                background: #6c757d;
-            }
-
-            button.success {
-                background: #28a745;
-            }
-
-            button.danger {
-                background: #dc3545;
-            }
-
-        #app {
-            display: none;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 10px;
-            background: #eee;
-            text-align: center;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-
-            .tab.active {
-                background: #007bff;
-                color: white;
-            }
-
-        .card {
-            background: white;
-            border: 2px solid #333;
-            border-radius: 10px;
-            min-height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 20px;
-            font-size: 18px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-            .card.flipped {
-                background: #f0f0f0;
-            }
-
-        .import-box {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        textarea {
-            width: 100%;
-            height: 150px;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-
-        .card-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .card-item {
-            background: #f9f9f9;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-        }
-
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            float: right;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashGen</title>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body { max-width: 600px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; }
+    .auth-box { background: #f5f5f5; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+    input, textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+    button { width: 100%; padding: 10px; margin: 5px 0; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    button.secondary { background: #6c757d; }
+    button.success { background: #28a745; }
+    button.danger { background: #dc3545; }
+    #app-view { display: none; }
+    .hidden { display: none; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { flex: 1; padding: 10px; background: #eee; text-align: center; cursor: pointer; border-radius: 5px; }
+    .tab.active { background: #007bff; color: white; }
+    .card { background: white; border: 2px solid #333; border-radius: 10px; min-height: 200px; display: flex; align-items: center; justify-content: center; padding: 20px; font-size: 18px; cursor: pointer; margin-bottom: 20px; }
+    .card.flipped { background: #f0f0f0; }
+    .import-box { background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    .card-list { list-style: none; padding: 0; }
+    .card-item { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 5px; }
+    .delete-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; float: right; }
+  </style>
 </head>
 <body>
-    <h1>⚡ FlashGen</h1>
-
-    <!-- AUTH -->
-    <div id="auth" class="auth-box">
-        <h3>Sign Up / Sign In</h3>
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
-        <button id="signup-btn">Sign Up</button>
-        <button id="signin-btn" class="secondary">Sign In</button>
-        <button id="signout-btn" class="secondary" style="display:none;">Sign Out</button>
+  <h1>⚡ FlashGen</h1>
+  
+  <!-- AUTH -->
+  <div id="auth" class="auth-box">
+    <h3>Sign Up / Sign In</h3>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button id="signup-btn">Sign Up</button>
+    <button id="signin-btn" class="secondary">Sign In</button>
+    <button id="signout-btn" class="secondary" style="display:none;">Sign Out</button>
+  </div>
+  
+  <!-- MAIN APP -->
+  <div id="app-view">
+    <div class="tabs">
+      <div class="tab active" data-tab="create">Create</div>
+      <div class="tab" data-tab="study">Study</div>
+      <div class="tab" data-tab="cards">My Cards</div>
     </div>
-
-    <!-- MAIN APP -->
-    <div id="app">
-        <div class="tabs">
-            <div class="tab active" data-tab="create">Create</div>
-            <div class="tab" data-tab="study">Study</div>
-            <div class="tab" data-tab="cards">My Cards</div>
-        </div>
-
-        <!-- CREATE -->
-        <div id="create-tab">
-            <div class="import-box">
-                <h4>Create New Card</h4>
-                <input id="card-front" placeholder="Question (Front)">
-                <input id="card-back" placeholder="Answer (Back)">
-                <button class="success" id="add-card-btn">Add Card</button>
-            </div>
-
-            <div class="import-box">
-                <h4>Import CSV</h4>
-                <input type="file" accept=".csv,.txt" id="csv-input">
-                <p style="font-size:12px;color:#666;">Format: question,answer (one per line)</p>
-            </div>
-
-            <div class="import-box">
-                <h4>Generate from PDF</h4>
-                <input type="file" accept=".pdf" id="pdf-input">
-            </div>
-
-            <div class="import-box">
-                <h4>Generate with AI</h4>
-                <textarea id="notes-input" placeholder="Paste your study notes here..."></textarea>
-                <button class="success" id="ai-gen-btn">Generate Cards (AI)</button>
-            </div>
-        </div>
-
-        <!-- STUDY -->
-        <div id="study-tab" class="hidden">
-            <div style="text-align:center;margin-bottom:10px;">
-                Card <span id="card-num">0</span> of <span id="total-cards">0</span>
-            </div>
-            <div class="card" id="study-card">
-                <div id="card-content">Click "Start Study" to begin</div>
-            </div>
-            <div>
-                <button id="prev-btn">← Previous</button>
-                <button id="next-btn" class="success">Next →</button>
-            </div>
-            <button class="secondary" id="start-study-btn" style="margin-top:10px;">Start Study</button>
-        </div>
-
-        <!-- MY CARDS -->
-        <div id="cards-tab" class="hidden">
-            <h4>My Cards (<span id="my-card-count">0</span>)</h4>
-            <ul class="card-list" id="card-list"></ul>
-            <button class="danger" id="clear-all-btn">Delete All Cards</button>
-        </div>
+    
+    <div id="create-tab">
+      <div class="import-box">
+        <h4>Create New Card</h4>
+        <input id="card-front" placeholder="Question (Front)">
+        <input id="card-back" placeholder="Answer (Back)">
+        <button class="success" id="add-card-btn">Add Card</button>
+      </div>
+      
+      <div class="import-box">
+        <h4>Import CSV</h4>
+        <input type="file" accept=".csv,.txt" id="csv-input">
+      </div>
+      
+      <div class="import-box">
+        <h4>Generate from PDF</h4>
+        <input type="file" accept=".pdf" id="pdf-input">
+      </div>
+      
+      <div class="import-box">
+        <h4>Generate with AI</h4>
+        <textarea id="notes-input" placeholder="Paste study notes..."></textarea>
+        <button class="success" id="ai-gen-btn">Generate Cards (AI)</button>
+      </div>
     </div>
+    
+    <div id="study-tab" class="hidden">
+      <div style="text-align:center;margin-bottom:10px;">Card <span id="card-num">0</span> of <span id="total-cards">0</span></div>
+      <div class="card" id="study-card"><div id="card-content">Click "Start Study"</div></div>
+      <button id="prev-btn">← Previous</button>
+      <button id="next-btn" class="success">Next →</button>
+      <button class="secondary" id="start-study-btn" style="margin-top:10px;">Start Study</button>
+    </div>
+    
+    <div id="cards-tab" class="hidden">
+      <h4>My Cards (<span id="my-card-count">0</span>)</h4>
+      <ul class="card-list" id="card-list"></ul>
+      <button class="danger" id="clear-all-btn">Delete All Cards</button>
+    </div>
+  </div>
 
-    <!-- Firebase & App Logic -->
-    <script type="module">
-        // ==================== CONFIG ====================
-        // Replace with YOUR Firebase config
-        const firebaseConfig = {
-            apiKey: "AIzaSyAyeglKC3k9PSYOKe4SL7Bi6pO00kvNr10",
-            authDomain: "flashcard-8008e.firebaseapp.com",
-            projectId: "flashcard-8008e",
-            storageBucket: "flashcard-8008e.firebasestorage.app",
-            messagingSenderId: "867702802383",
-            appId: "1:867702802383:web:596fdf3f90397d714a34ba"
-        };
+  <script>
+    // ==================== CONFIG ====================
+    const firebaseConfig = {
+      apiKey: "AIzaSyAyeglKC3k9PSYOKe4SL7Bi6pO00kvNr10",
+      authDomain: "flashcard-8008e.firebaseapp.com",
+      projectId: "flashcard-8008e",
+      storageBucket: "flashcard-8008e.firebasestorage.app",
+      messagingSenderId: "867702802383",
+      appId: "1:867702802383:web:596fdf3f90397d714a34ba"
+    };
+    
+    const openAIKey = "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"; // Replace this!
+    // ==========================================
+    
+    // Initialize Firebase - check if already initialized
+    let fbApp;
+    try {
+      fbApp = firebase.getApp();
+    } catch(e) {
+      fbApp = firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
+    let currentUser = null;
+    let allCards = [];
+    let studyIndex = 0;
 
-        // Replace with YOUR OpenAI key
-        const openAIKey = "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";
-        // ==============================================
+    // Sign Up
+    function signUp() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      auth.createUserWithEmailAndPassword(email, password)
+        .catch(e => alert(e.message));
+    }
 
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    // Sign In
+    function signIn() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      auth.signInWithEmailAndPassword(email, password)
+        .catch(e => alert(e.message));
+    }
 
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    // Sign Out
+    function signOut() {
+      auth.signOut();
+    }
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(auth);
+    // Add Card
+    async function addCard() {
+      const front = document.getElementById('card-front').value;
+      const back = document.getElementById('card-back').value;
+      if (!front || !back) return alert('Fill in both fields');
+      await db.collection("cards").add({
+        userId: currentUser.uid, front, back, createdAt: new Date()
+      });
+      document.getElementById('card-front').value = '';
+      document.getElementById('card-back').value = '';
+      loadCards();
+    }
 
-        let currentUser = null;
-        let allCards = [];
-        let studyIndex = 0;
+    // Load Cards
+    async function loadCards() {
+      if (!currentUser) return;
+      const snapshot = await db.collection("cards").where("userId", "==", currentUser.uid).get();
+      allCards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderCardList();
+    }
 
-        // Make functions available globally
-        window.authApp = {
-            signUp: async () => {
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                try {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                } catch (e) { alert(e.message); }
-            },
+    // Delete Card
+    async function deleteCard(id) {
+      await db.collection("cards").doc(id).delete();
+      loadCards();
+    }
 
-            signIn: async () => {
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } catch (e) { alert(e.message); }
-            },
+    // Clear All
+    async function clearAllCards() {
+      if (!confirm('Delete all?')) return;
+      for (const card of allCards) {
+        await db.collection("cards").doc(card.id).delete();
+      }
+      loadCards();
+    }
 
-            signOut: async () => {
-                await signOut(auth);
-            },
+    // CSV Import
+    async function importCSV() {
+      const file = document.getElementById('csv-input').files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.split('\n');
+      for (const line of lines) {
+        const [front, back] = line.split(',');
+        if (front && back) {
+          await db.collection("cards").add({
+            userId: currentUser.uid,
+            front: front.trim(),
+            back: back.trim(),
+            createdAt: new Date()
+          });
+        }
+      }
+      alert('Cards imported!');
+      loadCards();
+    }
 
-            addCard: async () => {
-                const front = document.getElementById('card-front').value;
-                const back = document.getElementById('card-back').value;
-                if (!front || !back) return alert('Fill in both fields');
-                await addDoc(collection(db, "cards"), {
-                    userId: currentUser.uid, front, back, createdAt: new Date()
-                });
-                document.getElementById('card-front').value = '';
-                document.getElementById('card-back').value = '';
-                window.authApp.loadCards();
-            },
+    // PDF Extract
+    async function handlePDF() {
+      const file = document.getElementById('pdf-input').files[0];
+      if (!file) return;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+      }
+      document.getElementById('notes-input').value = fullText;
+      alert('PDF text extracted!');
+    }
 
-            loadCards: async () => {
-                if (!currentUser) return;
-                const q = query(collection(db, "cards"), where("userId", "==", currentUser.uid));
-                const snapshot = await getDocs(q);
-                allCards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                window.authApp.renderCardList();
-            },
+    // AI Generate
+    async function generateWithAI() {
+      const notes = document.getElementById('notes-input').value;
+      if (!notes) return alert('Paste text first');
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + openAIKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'system', content: 'Generate 5 flashcards. Return JSON array [{"front":"q","back":"a"}]' }, { role: 'user', content: notes }]
+        })
+      });
+      const data = await response.json();
+      const cards = JSON.parse(data.choices[0].message.content);
+      for (const card of cards) {
+        await db.collection("cards").add({ userId: currentUser.uid, front: card.front, back: card.back, createdAt: new Date() });
+      }
+      alert('Generated ' + cards.length + ' cards!');
+      loadCards();
+      document.getElementById('notes-input').value = '';
+    }
 
-            deleteCard: async (id) => {
-                await deleteDoc(doc(db, "cards", id));
-                window.authApp.loadCards();
-            },
+    // UI Functions
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('[id$="-tab"]').forEach(t => t.classList.add('hidden'));
+      document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+      document.getElementById(tab + '-tab').classList.remove('hidden');
+    }
 
-            clearAllCards: async () => {
-                if (!confirm('Delete all cards?')) return;
-                for (const card of allCards) {
-                    await deleteDoc(doc(db, "cards", card.id));
-                }
-                window.authApp.loadCards();
-            },
+    function flipCard() {
+      document.getElementById('study-card').classList.toggle('flipped');
+    }
 
-            importCSV: async () => {
-                const file = document.getElementById('csv-input').files[0];
-                if (!file) return;
-                const text = await file.text();
-                const lines = text.split('\n');
-                for (const line of lines) {
-                    const [front, back] = line.split(',');
-                    if (front && back) {
-                        await addDoc(collection(db, "cards"), {
-                            userId: currentUser.uid,
-                            front: front.trim(),
-                            back: back.trim(),
-                            createdAt: new Date()
-                        });
-                    }
-                }
-                alert('Cards imported!');
-                window.authApp.loadCards();
-            },
+    function startStudy() {
+      if (allCards.length === 0) return alert('No cards');
+      studyIndex = 0;
+      showStudyCard();
+    }
 
-            handlePDF: async () => {
-                const file = document.getElementById('pdf-input').files[0];
-                if (!file) return;
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                let fullText = '';
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => item.str).join(' ') + '\n';
-                }
-                document.getElementById('notes-input').value = fullText;
-                alert('PDF text extracted! Review and click Generate Cards.');
-            },
+    function showStudyCard() {
+      const card = allCards[studyIndex];
+      document.getElementById('card-content').innerHTML = card.front;
+      document.getElementById('study-card').classList.remove('flipped');
+      document.getElementById('card-num').innerText = studyIndex + 1;
+      document.getElementById('total-cards').innerText = allCards.length;
+    }
 
-            generateWithAI: async () => {
-                const notes = document.getElementById('notes-input').value;
-                if (!notes) return alert('Paste some text first');
-                try {
-                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${openAIKey}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            model: 'gpt-3.5-turbo',
-                            messages: [{
-                                role: 'system',
-                                content: 'Generate 5 flashcards from the text. Return ONLY valid JSON array. Format: [{"front": "question", "back": "answer"}]'
-                            }, { role: 'user', content: notes }]
-                        })
-                    });
-                    const data = await response.json();
-                    const cards = JSON.parse(data.choices[0].message.content);
-                    for (const card of cards) {
-                        await addDoc(collection(db, "cards"), {
-                            userId: currentUser.uid, front: card.front, back: card.back, createdAt: new Date()
-                        });
-                    }
-                    alert(`Generated ${cards.length} cards!`);
-                    window.authApp.loadCards();
-                    document.getElementById('notes-input').value = '';
-                } catch (e) { alert('Error: ' + e.message); }
-            },
+    function nextCard() { if (studyIndex < allCards.length - 1) { studyIndex++; showStudyCard(); } }
+    function prevCard() { if (studyIndex > 0) { studyIndex--; showStudyCard(); } }
 
-            showTab: (tab) => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('[id$="-tab"]').forEach(t => t.classList.add('hidden'));
-                document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-                document.getElementById(`${tab}-tab`).classList.remove('hidden');
-            },
+    function renderCardList() {
+      document.getElementById('card-list').innerHTML = allCards.map(c => 
+        '<li class="card-item">' + c.front + ' → ' + c.back + ' <button class="delete-btn" onclick="deleteCard(\'' + c.id + '\')">×</button></li>'
+      ).join('');
+      document.getElementById('my-card-count').innerText = allCards.length;
+    }
 
-            flipCard: () => {
-                document.getElementById('study-card').classList.toggle('flipped');
-            },
+    // Button Events
+    document.getElementById('signup-btn').onclick = signUp;
+    document.getElementById('signin-btn').onclick = signIn;
+    document.getElementById('signout-btn').onclick = signOut;
+    document.getElementById('add-card-btn').onclick = addCard;
+    document.getElementById('csv-input').onchange = importCSV;
+    document.getElementById('pdf-input').onchange = handlePDF;
+    document.getElementById('ai-gen-btn').onclick = generateWithAI;
+    document.getElementById('clear-all-btn').onclick = clearAllCards;
+    document.getElementById('study-card').onclick = flipCard;
+    document.getElementById('start-study-btn').onclick = startStudy;
+    document.getElementById('prev-btn').onclick = prevCard;
+    document.getElementById('next-btn').onclick = nextCard;
 
-            startStudy: () => {
-                if (allCards.length === 0) return alert('No cards yet');
-                studyIndex = 0;
-                window.authApp.showStudyCard();
-            },
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => showTab(tab.dataset.tab);
+    });
 
-            showStudyCard: () => {
-                const card = allCards[studyIndex];
-                document.getElementById('card-content').innerHTML = card.front;
-                document.getElementById('study-card').classList.remove('flipped');
-                document.getElementById('card-num').innerText = studyIndex + 1;
-                document.getElementById('total-cards').innerText = allCards.length;
-            },
-
-            nextCard: () => {
-                if (studyIndex < allCards.length - 1) {
-                    studyIndex++;
-                    window.authApp.showStudyCard();
-                }
-            },
-
-            prevCard: () => {
-                if (studyIndex > 0) {
-                    studyIndex--;
-                    window.authApp.showStudyCard();
-                }
-            },
-
-            renderCardList: () => {
-                const list = document.getElementById('card-list');
-                list.innerHTML = allCards.map(c => `
-              <li class="card-item">
-                ${c.front} → ${c.back}
-                <button class="delete-btn" data-id="${c.id}">×</button>
-              </li>
-            `).join('');
-                document.getElementById('my-card-count').innerText = allCards.length;
-
-                // Add delete handlers
-                document.querySelectorAll('.delete-btn').forEach(btn => {
-                    btn.onclick = () => window.authApp.deleteCard(btn.dataset.id);
-                });
-            },
-
-            init: () => {
-                // Auth buttons
-                document.getElementById('signup-btn').onclick = window.authApp.signUp;
-                document.getElementById('signin-btn').onclick = window.authApp.signIn;
-                document.getElementById('signout-btn').onclick = window.authApp.signOut;
-
-                // App buttons
-                document.getElementById('add-card-btn').onclick = window.authApp.addCard;
-                document.getElementById('csv-input').onchange = window.authApp.importCSV;
-                document.getElementById('pdf-input').onchange = window.authApp.handlePDF;
-                document.getElementById('ai-gen-btn').onclick = window.authApp.generateWithAI;
-                document.getElementById('clear-all-btn').onclick = window.authApp.clearAllCards;
-
-                // Tabs
-                document.querySelectorAll('.tab').forEach(tab => {
-                    tab.onclick = () => window.authApp.showTab(tab.dataset.tab);
-                });
-
-                // Study
-                document.getElementById('study-card').onclick = window.authApp.flipCard;
-                document.getElementById('start-study-btn').onclick = window.authApp.startStudy;
-                document.getElementById('prev-btn').onclick = window.authApp.prevCard;
-                document.getElementById('next-btn').onclick = window.authApp.nextCard;
-
-                // Auth state
-                onAuthStateChanged(auth, async (user) => {
-                    currentUser = user;
-                    if (user) {
-                        document.getElementById('auth').style.display = 'none';
-                        document.getElementById('app').style.display = 'block';
-                        document.getElementById('signout-btn').style.display = 'block';
-                        await window.authApp.loadCards();
-                    } else {
-                        document.getElementById('auth').style.display = 'block';
-                        document.getElementById('app').style.display = 'none';
-                        document.getElementById('signout-btn').style.display = 'none';
-                    }
-                });
-            }
-        };
-
-        window.authApp.init();
-    </script>
+    // Auth State
+    auth.onAuthStateChanged(async (user) => {
+      currentUser = user;
+      if (user) {
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('app-view').style.display = 'block';
+        document.getElementById('signout-btn').style.display = 'block';
+        await loadCards();
+      } else {
+        document.getElementById('auth').style.display = 'block';
+        document.getElementById('app-view').style.display = 'none';
+        document.getElementById('signout-btn').style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>

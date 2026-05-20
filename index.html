@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FlashGen</title>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
+  <!-- Firebase v8 (no modules needed) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -35,7 +36,6 @@
 <body>
   <h1>⚡ FlashGen</h1>
   
-  <!-- AUTH -->
   <div id="auth" class="auth-box">
     <h3>Sign Up / Sign In</h3>
     <input type="email" id="email" placeholder="Email">
@@ -45,7 +45,6 @@
     <button id="signout-btn" class="secondary" style="display:none;">Sign Out</button>
   </div>
   
-  <!-- MAIN APP -->
   <div id="app-view">
     <div class="tabs">
       <div class="tab active" data-tab="create">Create</div>
@@ -107,13 +106,8 @@
     const openAIKey = "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"; // Replace this!
     // ==========================================
     
-    // Initialize Firebase - check if already initialized
-    let fbApp;
-    try {
-      fbApp = firebase.getApp();
-    } catch(e) {
-      fbApp = firebase.initializeApp(firebaseConfig);
-    }
+    // Initialize Firebase v8
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
     
@@ -149,7 +143,7 @@
       const front = document.getElementById('card-front').value;
       const back = document.getElementById('card-back').value;
       if (!front || !back) return alert('Fill in both fields');
-      await db.collection("cards").add({
+      db.collection("cards").add({
         userId: currentUser.uid, front, back, createdAt: new Date()
       });
       document.getElementById('card-front').value = '';
@@ -160,23 +154,21 @@
     // Load Cards
     async function loadCards() {
       if (!currentUser) return;
-      const snapshot = await db.collection("cards").where("userId", "==", currentUser.uid).get();
-      allCards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderCardList();
+      db.collection("cards").where("userId", "==", currentUser.uid).get().then(snapshot => {
+        allCards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderCardList();
+      });
     }
 
     // Delete Card
-    async function deleteCard(id) {
-      await db.collection("cards").doc(id).delete();
-      loadCards();
+    function deleteCard(id) {
+      db.collection("cards").doc(id).delete().then(loadCards);
     }
 
     // Clear All
-    async function clearAllCards() {
+    function clearAllCards() {
       if (!confirm('Delete all?')) return;
-      for (const card of allCards) {
-        await db.collection("cards").doc(card.id).delete();
-      }
+      allCards.forEach(card => db.collection("cards").doc(card.id).delete());
       loadCards();
     }
 
@@ -189,7 +181,7 @@
       for (const line of lines) {
         const [front, back] = line.split(',');
         if (front && back) {
-          await db.collection("cards").add({
+          db.collection("cards").add({
             userId: currentUser.uid,
             front: front.trim(),
             back: back.trim(),
@@ -231,9 +223,9 @@
       });
       const data = await response.json();
       const cards = JSON.parse(data.choices[0].message.content);
-      for (const card of cards) {
-        await db.collection("cards").add({ userId: currentUser.uid, front: card.front, back: card.back, createdAt: new Date() });
-      }
+      cards.forEach(card => {
+        db.collection("cards").add({ userId: currentUser.uid, front: card.front, back: card.back, createdAt: new Date() });
+      });
       alert('Generated ' + cards.length + ' cards!');
       loadCards();
       document.getElementById('notes-input').value = '';
@@ -294,13 +286,13 @@
     });
 
     // Auth State
-    auth.onAuthStateChanged(async (user) => {
+    auth.onAuthStateChanged(user => {
       currentUser = user;
       if (user) {
         document.getElementById('auth').style.display = 'none';
         document.getElementById('app-view').style.display = 'block';
         document.getElementById('signout-btn').style.display = 'block';
-        await loadCards();
+        loadCards();
       } else {
         document.getElementById('auth').style.display = 'block';
         document.getElementById('app-view').style.display = 'none';
